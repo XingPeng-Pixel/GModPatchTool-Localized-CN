@@ -70,7 +70,7 @@ impl App {
 
 		(
 			Self {
-				title: String::from("GModPatchTool"),
+				title: String::from("GMod补丁工具"),
 				term: iced_term::Terminal::new(term_id, term_settings),
 			},
 			Task::none(),

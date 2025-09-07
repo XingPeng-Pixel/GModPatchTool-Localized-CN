@@ -1,69 +1,71 @@
-# GModPatchTool <sub>_Formerly GModCEFCodecFix_</sub>
+# GModPatchTool <sub>_前身为 GModCEFCodecFix_</sub>
 
 ![GModPatchTool](GModPatchToolLogo.png)
 
-***GModPatchTool** does what Facepunch [don't](https://github.com/Facepunch/gmod-html/pull/5)!*
+***GModPatchTool** 做到了 Facepunch [没有做到的事](https://github.com/Facepunch/gmod-html/pull/5)!*
 
-**Created by Solstice Game Studios (www.solsticegamestudios.com)**
+**由 Solstice Game Studios (www.solsticegamestudios.com) 创建**
+**汉化和镜像源由 Xingpeng 修改**
+**感谢ghproxy各位的镜像提供**
 
-# 🛠️ Patches We Apply
-### All Platforms
-- Fixes various launch/missing main menu issues on macOS and Linux
-- Adds `-chromium_fps_max` Launch Option for GMod
-  - Allows setting a maximum internal FPS limit for ALL CEF web panels
-  - May improve game framerate in exchange for less web content framerate
-  - Default is 60
-- Improves the Legacy VGUI Theme with our custom SourceScheme.res
-- Replaces Debug/Console fonts with [PT Mono](https://fonts.google.com/specimen/PT+Mono) to improve consistency/readability across platforms
-  - This is particularly important for Proton, where text using those fonts are broken/tiny out of the box (no Lucida Console)
-  - If you don't like the theme changes or the font replacement, you can disable those patches by using the `--no-sourcescheme` argument when running the tool
+# 🛠️ 我们提供的修复
+### 所有平台
+- 修复 macOS 和 Linux 上的各种启动/主菜单缺失问题
+- 为 GMod 添加 `-chromium_fps_max` 启动选项
+  - 允许为所有 CEF 网页面板设置内部最大 FPS 限制
+  - 可能会以牺牲网页内容帧率为代价提高游戏帧率
+  - 默认值为 60
+- 使用我们自定义的 SourceScheme.res 改进经典 VGUI 主题
+- 将调试/控制台字体替换为 [PT Mono](https://fonts.google.com/specimen/PT+Mono)，以提高跨平台的一致性和可读性
+  - 这对于 Proton 尤其重要，因为在这些环境下，使用这些字体的文本开箱即用就是破损/微小的（没有 Lucida Console）
+  - 如果您不喜欢主题更改或字体替换，可以在运行工具时使用 `--no-sourcescheme` 参数禁用这些补丁
 
-### In-Game Web Browser ([Chromium Embedded Framework, aka CEF](https://en.wikipedia.org/wiki/Chromium_Embedded_Framework))
-- Updates CEF to 137.0.10 (Chromium 137.0.7151.69)
-- Enables [Proprietary Video/Audio codec](https://www.chromium.org/audio-video), like H.264 (MP4) and AAC, support
-- Enables [Widevine](https://www.widevine.com) support (but [no VMP](https://github.com/solsticegamestudios/GModPatchTool/issues/100), so Netflix et al. don't work currently...)
-- Enables Software WebGL
-- Enables partial GPU acceleration
-- Improves performance for texture updates
-- Disables Hardware Media Keys control of media
-- Re-enables Site Isolation (security feature; some sites require it to function)
+### 游戏内网页浏览器（[Chromium Embedded Framework，简称 CEF](https://en.wikipedia.org/wiki/Chromium_Embedded_Framework)）
+- 将 CEF 更新至 137.0.10 版本（Chromium 137.0.7151.69）
+- 启用[专有视频/音频编解码器](https://www.chromium.org/audio-video)支持，例如 H.264 (MP4) 和 AAC
+- 启用 [Widevine](https://www.widevine.com) 支持（但[无 VMP](https://github.com/solsticegamestudios/GModPatchTool/issues/100)，因此 Netflix 等目前无法工作...）
+- 启用软件 WebGL
+- 启用部分 GPU 加速
+- 改进纹理更新性能
+- 禁用硬件媒体键对媒体的控制
+- 重新启用站点隔离（安全功能；某些网站需要此功能才能运行）
 
 ### Linux
-- Can fix Steam Overlay/MangoHud/etc not working
-  - Put `GMOD_ENABLE_LD_PRELOAD=1 %command%` in GMod's Launch Options to try it!
-  - This is disabled by default because it could just crash GMod instead
-- Sets `mesa_glthread=true` for more OpenGL performance with Mesa drivers
-- Sets `ulimit -n $(ulimit -Hn)` to fix issues opening/mounting many files (many addons, Lua autorefresh, etc)
-- Adds various commented exports to `hl2.sh` to help multi-GPU users quickly point GMod to use the correct GPU (typically Laptops)
-  - See [#188](https://github.com/solsticegamestudios/GModPatchTool/issues/188) for why we don't turn these on by default
+- 可以修复 Steam 叠加层/MangoHud/等无法工作的问题
+  - 在 GMod 的启动选项中加入 `GMOD_ENABLE_LD_PRELOAD=1 %command%` 来尝试！
+  - 默认情况下此功能是禁用的，因为它可能会导致 GMod 崩溃
+- 设置 `mesa_glthread=true` 以在使用 Mesa 驱动程序时获得更多 OpenGL 性能
+- 设置 `ulimit -n $(ulimit -Hn)` 以修复打开/挂载许多文件时的问题（许多插件、Lua 自动刷新等）
+- 在 `hl2.sh` 中添加各种注释掉的导出命令，以帮助多 GPU 用户快速指示 GMod 使用正确的 GPU（通常是笔记本电脑）
+  - 查看 [#188](https://github.com/solsticegamestudios/GModPatchTool/issues/188) 了解我们为何默认不启用这些设置
 
-# ❓ Players: How to Install / Use
-Download the **[Latest Release](https://github.com/solsticegamestudios/GModPatchTool/releases)** and run the application.
+# ❓ 玩家：如何安装/使用
+下载 **[最新版本](https://github.com/solsticegamestudios/GModPatchTool/releases)**（或通过国内镜像 **[gh-proxy](https://gh-proxy.com/https://github.com/solsticegamestudios/GModPatchTool/releases)**）并运行应用程序。
 
-Need a more in-depth guide? Take a look at https://www.solsticegamestudios.com/fixmedia/
+需要更深入的指南？请查看 https://www.solsticegamestudios.com/fixmedia/
 
-# 👩‍💻 Developers: How to Use / Detect
-Direct players to follow the Players' instructions above. This patch is CLIENTSIDE only!
+# 👩‍💻 开发者：如何使用/检测
+指引玩家按照上述玩家说明操作。此补丁仅限客户端！
 
-**To Detect Patched CEF:** Check out our [Lua detection example](examples/detection_example.lua).
+**要检测已修补的 CEF：** 查看我们的 [Lua 检测示例](examples/detection_example.lua)。
 
-> [!WARNING]
-> Our  CEF builds have Site Isolation enabled, which means **you must pay attention to where you're calling JavaScript-related DHTML functions!**
+> [!警告]
+> 我们的 CEF 构建启用了站点隔离，这意味着**您必须注意调用 JavaScript 相关 DHTML 函数的位置！**
 >
-> If you call [DHTML.AddFunction](https://wiki.facepunch.com/gmod/DHTML:AddFunction), [DHTML.QueueJavascript](https://wiki.facepunch.com/gmod/DHTML:QueueJavascript), or [DHTML.RunJavascript](https://wiki.facepunch.com/gmod/Panel:RunJavascript) before the page begins loading, it WILL NOT WORK! Make sure you're calling them in [DHTML.OnBeginLoadingDocument](https://wiki.facepunch.com/gmod/Panel:OnBeginLoadingDocument) or later.
+> 如果您在页面开始加载之前调用 [DHTML.AddFunction](https://wiki.facepunch.com/gmod/DHTML:AddFunction)、[DHTML.QueueJavascript](https://wiki.facepunch.com/gmod/DHTML:QueueJavascript) 或 [DHTML.RunJavascript](https://wiki.facepunch.com/gmod/Panel:RunJavascript)，它将不起作用！请确保您在 [DHTML.OnBeginLoadingDocument](https://wiki.facepunch.com/gmod/Panel:OnBeginLoadingDocument) 或之后调用它们。
 >
-> Site Isolation destroys JavaScript state is on navigation like how real web browsers work.
+> 站点隔离会在导航时销毁 JavaScript 状态，就像真正的网页浏览器一样。
 >
-> This tool includes a patch for mainmenu.lua that addresses GMod's own issues not using the correct approach, but **this is a breaking change** for any addon that doesn't handle HTML panel states properly for JS.
+> 此工具包含一个针对 mainmenu.lua 的补丁，解决了 GMod 自身未使用正确方法的问题，但对于任何未正确处理 HTML 面板状态以进行 JS 操作的插件来说，**这是一个破坏性更改**。
 
-**If you want to go more in-depth:** Check out [our fork of gmod-html](https://github.com/solsticegamestudios/gmod-html) and [our CEF build scripts](cef_build).
+**如果您想更深入：** 查看[我们分叉的 gmod-html](https://github.com/solsticegamestudios/gmod-html) 和[我们的 CEF 构建脚本](cef_build)。
 
-# 📢 Need Help / Contact Us
-* Read the FAQ: https://www.solsticegamestudios.com/fixmedia/faq/
-* Discord: https://www.solsticegamestudios.com/discord/
-* Email: contact@solsticegamestudios.com
+# 📢 需要帮助/联系我们
+* 阅读常见问题解答：https://www.solsticegamestudios.com/fixmedia/faq/
+* Discord：https://www.solsticegamestudios.com/discord/
+* 电子邮件：contact@solsticegamestudios.com
 
-# 💖 Help Support Us
-This project is open source and provided free of charge for the Garry's Mod community.
+# 💖 帮助我们
+该项目是开源的，并为 Garry's Mod 社区免费提供。
 
-**If you like what we're doing here, consider [throwing a few dollars our way](https://www.solsticegamestudios.com/donate/)!** Our work is 100% funded by users of the tool!
+**如果您喜欢我们在这里所做的工作，请考虑[向我们捐助几美元](https://www.solsticegamestudios.com/donate/)！** 我们的工作 100% 由该工具的用户资助！
