@@ -1,12 +1,12 @@
 // Version and Manifest files
 const TEXT_SERVER_ROOTS: [&str; 2] = [
-	"https://gh-proxy.com/https://raw.githubusercontent.com/solsticegamestudios/GModPatchTool/refs/heads/files/",
+	"https://gh.xpcdn.ggff.net/raw.githubusercontent.com/solsticegamestudios/GModPatchTool/refs/heads/files/",
 	"https://www.solsticegamestudios.com/gmodpatchtool/"
 ];
 
 // Patch files
 const BINARY_SERVER_ROOTS: [&str; 2] = [
-	"https://gh-proxy.com/https://media.githubusercontent.com/media/solsticegamestudios/GModPatchTool/refs/heads/files/",
+	"https://gh.xpcdn.ggff.net/media.githubusercontent.com/media/solsticegamestudios/GModPatchTool/refs/heads/files/",
 	"https://www.solsticegamestudios.com/gmodpatchtool/" // TODO: Webhook that triggers git pull and clears the cache on Cloudflare
 ];
 
@@ -584,7 +584,7 @@ where
 		let create_result = File::create(&gmod_file_path);
 
 		if let Err(error) = create_result {
-			terminal_write(writer, format!("\tFailed to Patch: {filename} | {integrity_status_string}: {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+			terminal_write(writer, format!("\t修补失败： {filename} | {integrity_status_string}： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 			return new_integrity_status;
 		}
 
@@ -597,7 +597,7 @@ where
 		let gmod_file_path = match pathbuf_to_canonical_pathbuf(gmod_file_path, false) {
 			Ok(gmod_file_path) => gmod_file_path,
 			Err(error) => {
-				terminal_write(writer, format!("\tFailed to Patch: {filename} | {integrity_status_string} / Step 1: {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+				terminal_write(writer, format!("\t修补失败： {filename} | {integrity_status_string} / 步骤 1： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 				return new_integrity_status;
 			}
 		};
@@ -608,7 +608,7 @@ where
 		let patch_file_path = match pathbuf_to_canonical_pathbuf(extend_pathbuf_and_return(cache_dir.to_path_buf(), &patch_file_parts[..]), false) {
 			Ok(patch_file_path) => patch_file_path,
 			Err(error) => {
-				terminal_write(writer, format!("\tFailed to Patch: {filename} | {integrity_status_string} / Step 2: {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+				terminal_write(writer, format!("\t修补失败： {filename} | {integrity_status_string} / 步骤 2： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 				return new_integrity_status;
 			}
 		};
@@ -616,7 +616,7 @@ where
 		let gmod_file = match std::fs::read(gmod_file_path.clone()) {
 			Ok(gmod_file) => gmod_file,
 			Err(error) => {
-				terminal_write(writer, format!("\tFailed to Patch: {filename} | {integrity_status_string} / Step 3: {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+				terminal_write(writer, format!("\t修补失败： {filename} | {integrity_status_string} / 步骤 3： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 				return new_integrity_status;
 			}
 		};
@@ -624,7 +624,7 @@ where
 		let patch_file = match std::fs::read(patch_file_path) {
 			Ok(patch_file) => patch_file,
 			Err(error) => {
-				terminal_write(writer, format!("\tFailed to Patch: {filename} | {integrity_status_string} / Step 4: {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+				terminal_write(writer, format!("\t修补失败： {filename} | {integrity_status_string} / 步骤 4： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 				return new_integrity_status;
 			}
 		};
@@ -632,7 +632,7 @@ where
 		let patcher = match Bspatch::new(&patch_file) {
 			Ok(patcher) => patcher,
 			Err(error) => {
-				terminal_write(writer, format!("\tFailed to Patch: {filename} | {integrity_status_string} / Step 5: {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+				terminal_write(writer, format!("\t修补失败： {filename} | {integrity_status_string} / 步骤 5： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 				return new_integrity_status;
 			}
 		};
@@ -641,14 +641,14 @@ where
 		let patch_result = patcher.apply(&gmod_file, io::Cursor::new(&mut new_gmod_file));
 
 		if let Err(error) = patch_result {
-			terminal_write(writer, format!("\tFailed to Patch: {filename} | {integrity_status_string} / Step 6: {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+			terminal_write(writer, format!("\t修补失败： {filename} | {integrity_status_string} / 步骤 6： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 			return new_integrity_status;
 		}
 
 		let write_result = std::fs::write(&gmod_file_path, &new_gmod_file);
 
 		if let Err(error) = write_result {
-			terminal_write(writer, format!("\tFailed to Patch: {filename} | {integrity_status_string} / Step 7: {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+			terminal_write(writer, format!("\t修补失败： {filename} | {integrity_status_string} / 步骤 7： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 			return new_integrity_status;
 		}
 
@@ -656,17 +656,17 @@ where
 		let file_hash = match get_file_hash(&gmod_file_path) {
 			Ok(file_hash) => file_hash,
 			Err(error) => {
-				terminal_write(writer, format!("\tFailed to Patch: {filename} | {integrity_status_string} / Step 8: {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+				terminal_write(writer, format!("\t修补失败： {filename} | {integrity_status_string} / 步骤 8： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 				return new_integrity_status;
 			}
 		};
 
 		if file_hash != hashes["fixed"] {
-			terminal_write(writer, format!("\tFailed to Patch: {filename} | {integrity_status_string} / Step 9: Checksum mismatch").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+			terminal_write(writer, format!("\t修补失败： {filename} | {integrity_status_string} / 步骤 9：校验和不匹配").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 			return new_integrity_status;
 		}
 
-		terminal_write(writer, format!("\tPatched: {filename}").as_str(), true, None);
+		terminal_write(writer, format!("\t已修补： {filename}").as_str(), true, None);
 		new_integrity_status = IntegrityStatus::Fixed;
 	}
 
@@ -692,7 +692,7 @@ where
 	if let Ok(pid) = running_instance_pid {
 		if let Ok(pid) = pid.parse::<usize>() {
 			if sys.process(sysinfo::Pid::from(pid)).is_some() {
-				return Err(AlmightyError::Generic(format!("Another instance of GModPatchTool is already running ({pid}).")));
+				return Err(AlmightyError::Generic(format!("GModPatchTool 的另一个实例正在运行 ({pid})。")));
 			}
 		}
 	}
@@ -700,7 +700,7 @@ where
 	// Create PID lockfile
 	let pid_write_result = tokio::fs::write(&pid_path, std::process::id().to_string()).await;
 	if let Err(error) = pid_write_result {
-		return Err(AlmightyError::Generic(format!("Failed to create gmodpatchtool.pid: {error}")));
+		return Err(AlmightyError::Generic(format!("创建 gmodpatchtool.pid 文件失败： {error}")));
 	}
 
 	// Get local version
@@ -712,7 +712,7 @@ where
 	let remote_version_response = get_http_response(writer, writer_is_interactive, &TEXT_SERVER_ROOTS, "version.txt").await;
 
 	if remote_version_response.is_none() {
-		return Err(AlmightyError::Generic("Couldn't get remote version. Please check your internet connection!".to_string()));
+		return Err(AlmightyError::Generic("无法获取远程版本。请检查您的网络连接！".to_string()));
 	}
 
 	let remote_version_response = remote_version_response.unwrap();
@@ -724,7 +724,7 @@ where
 	if local_version >= remote_version {
 	terminal_write(writer, format!("您正在运行最新版本的 GModPatchTool [本地: {local_version} / 远程: {remote_version}]！\n").as_str(), true, if writer_is_interactive { Some("green") } else { None });
 	} else {
-	terminal_write(writer, "警告：GModPatchTool 版本已过期！请前往以下地址获取最新版本：\nhttps://gh-proxy.com/https://github.com/solsticegamestudios/GModPatchTool/releases", true, if writer_is_interactive { Some("red") } else { None });
+	terminal_write(writer, "警告：GModPatchTool 版本已过期！请前往以下地址获取最新版本：\nhttps://gh.xpcdn.ggff.net/https://github.com/solsticegamestudios/GModPatchTool/releases", true, if writer_is_interactive { Some("red") } else { None });
 
 		let mut secs_to_continue: u8 = 5;
 		while secs_to_continue > 0 {
@@ -771,7 +771,7 @@ where
 
 	// Abort if GMod is currently running
 	if sys.processes_by_exact_name("gmod.exe".as_ref()).next().is_some() || sys.processes_by_exact_name("gmod".as_ref()).next().is_some() {
-		return Err(AlmightyError::Generic("Garry's Mod is currently running. Please close it before running this tool.".to_string()));
+		return Err(AlmightyError::Generic("Garry's Mod 正在运行。请在运行此工具前关闭它。".to_string()));
 	}
 
 	// Warning for macOS users
@@ -805,7 +805,7 @@ where
 		steam_path = match steam_path_arg_pathbuf {
 			Ok(steam_path) => Some(steam_path),
 			Err(error) => {
-				return Err(AlmightyError::Generic(format!("Please check the --steam_path argument is pointing to a valid path:\n\t{error}")));
+				return Err(AlmightyError::Generic(format!("请检查 --steam_path 参数是否指向有效路径：\n\t{error}")));
 			}
 		}
 	} else {
@@ -894,7 +894,7 @@ where
 	}
 
 	if steam_path.is_none() {
-		return Err(AlmightyError::Generic("Couldn't find Steam. If it's installed, try using the --steam_path argument to force a specific path.".to_string()));
+		return Err(AlmightyError::Generic("找不到 Steam。如果已安装，请尝试使用 --steam_path 参数指定路径。".to_string()));
 	}
 
 	let steam_path = steam_path.unwrap();
@@ -907,14 +907,14 @@ where
 	let steam_loginusers_str = tokio::fs::read_to_string(steam_loginusers_path).await;
 
 	if steam_loginusers_str.is_err() {
-		return Err(AlmightyError::Generic("Couldn't find Steam loginusers.vdf. Have you ever launched/signed in to Steam?".to_string()));
+		return Err(AlmightyError::Generic("找不到 Steam loginusers.vdf 文件。您是否曾经启动/登录过 Steam？".to_string()));
 	}
 
 	let steam_loginusers_str = steam_loginusers_str.unwrap();
 	let steam_loginusers = vdf::from_str(steam_loginusers_str.as_str());
 
 	if let Err(error) = steam_loginusers {
-		return Err(AlmightyError::Generic(format!("Couldn't parse Steam loginusers.vdf. Is the file corrupt?\n\t{error}")));
+		return Err(AlmightyError::Generic(format!("无法解析 Steam loginusers.vdf 文件。文件是否已损坏？\n\t{error}")));
 	}
 
 	let mut steam_user: HashMap<&str, String> = HashMap::new();
@@ -932,7 +932,7 @@ where
 	}
 
 	if !steam_user.contains_key("Timestamp") {
-		return Err(AlmightyError::Generic("Couldn't find Steam User. Have you ever launched/signed in to Steam?".to_string()));
+		return Err(AlmightyError::Generic("找不到 Steam 用户。您是否曾经启动/登录过 Steam？".to_string()));
 	}
 
 	let steam_id = SteamId::new(steam_user.get("SteamID64").unwrap().parse::<u64>().unwrap()).unwrap();
@@ -956,14 +956,14 @@ where
 	}
 
 	if steam_libraryfolders_str.is_err() {
-		return Err(AlmightyError::Generic("Couldn't find Steam libraryfolders.vdf. Have you ever launched/signed in to Steam?".to_string()));
+		return Err(AlmightyError::Generic("找不到 Steam libraryfolders.vdf 文件。您是否曾经启动/登录过 Steam？".to_string()));
 	}
 
 	let steam_libraryfolders_str = steam_libraryfolders_str.unwrap();
 	let steam_libraryfolders = vdf::from_str(steam_libraryfolders_str.as_str());
 
 	if let Err(error) = steam_libraryfolders {
-		return Err(AlmightyError::Generic(format!("Couldn't parse Steam libraryfolders.vdf. Is the file corrupt?\n\t{error}")));
+		return Err(AlmightyError::Generic(format!("无法解析 Steam libraryfolders.vdf 文件。文件是否已损坏？\n\t{error}")));
 	}
 
 	// Get GMod Steam Library and Manifest
@@ -996,14 +996,14 @@ where
 
 	//gmod_steam_library_path.is_none() ||
 	if gmod_manifest_str.is_none() {
-		return Err(AlmightyError::Generic("Couldn't find GMod's appmanifest_4000.acf. Is Garry's Mod installed?".to_string()));
+		return Err(AlmightyError::Generic("找不到 GMod 的 appmanifest_4000.acf 文件。是否已安装 Garry's Mod？".to_string()));
 	}
 
 	let gmod_manifest_str = gmod_manifest_str.unwrap();
 	let gmod_manifest = vdf::from_str(gmod_manifest_str.as_str());
 
 	if let Err(error) = gmod_manifest {
-		return Err(AlmightyError::Generic(format!("Couldn't parse GMod's appmanifest_4000.acf. Is the file corrupt?\n\t{error}")));
+		return Err(AlmightyError::Generic(format!("无法解析 GMod 的 appmanifest_4000.acf 文件。文件是否已损坏？\n\t{error}")));
 	}
 
 	let gmod_steam_library_path = gmod_steam_library_path.unwrap();
@@ -1025,7 +1025,7 @@ where
 	terminal_write(writer, format!("GMod 应用状态： {gmod_stateflags} | {gmod_scheduledautoupdate} | {gmod_fullvalidatebeforenextupdate} | {gmod_bytesdownloaded}/{gmod_bytestodownload} | {gmod_bytesstaged}/{gmod_bytestostage} \n").as_str(), true, None);
 
 	if gmod_stateflags != 4 || gmod_scheduledautoupdate != 0 || gmod_fullvalidatebeforenextupdate || gmod_bytesdownloaded != gmod_bytestodownload || gmod_bytesstaged != gmod_bytestostage {
-		return Err(AlmightyError::Generic("Garry's Mod is Not Ready. Check Steam > Downloads and make sure it is fully installed and up to date. If that doesn't work, try launching the game, closing it, then running the tool again.".to_string()));
+		return Err(AlmightyError::Generic("Garry's Mod 未准备就绪。请检查 Steam > 下载，确保游戏已完全安装并更新到最新版本。如果仍有问题，请尝试启动游戏，关闭后再次运行此工具。".to_string()));
 	}
 
 	// Get GMod branch
@@ -1047,7 +1047,7 @@ where
 	}
 
 	if gmod_path.is_err() {
-		return Err(AlmightyError::Generic("Couldn't find Garry's Mod directory. Is Garry's Mod installed?".to_string()));
+		return Err(AlmightyError::Generic("找不到 Garry's Mod 目录。是否已安装 Garry's Mod？".to_string()));
 	}
 
 	let gmod_path = gmod_path.unwrap();
@@ -1061,7 +1061,7 @@ where
 	if root {
 		if let Ok(gmod_dir_meta) = tokio::fs::metadata(&gmod_path).await {
 			if gmod_dir_meta.uid() != 0 {
-				return Err(AlmightyError::Generic("You are running GModPatchTool as root, but the Garry's Mod directory isn't owned by root. Either fix your permissions or don't run as root! Aborting...".to_string()));
+				return Err(AlmightyError::Generic("您正在以 root 权限运行 GModPatchTool，但 Garry's Mod 目录不属于 root 用户。请修复权限或不要以 root 权限运行！正在中止...".to_string()));
 			}
 		}
 	}
@@ -1084,14 +1084,14 @@ where
 		let steam_config_str = tokio::fs::read_to_string(steam_config_path).await;
 
 		if steam_config_str.is_err() {
-			return Err(AlmightyError::Generic("Couldn't find Steam config.vdf. Have you ever launched/signed in to Steam?".to_string()));
+			return Err(AlmightyError::Generic("找不到 Steam config.vdf 文件。您是否曾经启动/登录过 Steam？".to_string()));
 		}
 
 		let steam_config_str = steam_config_str.unwrap();
 		let steam_config = vdf::from_str(steam_config_str.as_str());
 
 		if steam_config.is_err() {
-			return Err(AlmightyError::Generic("Couldn't parse Steam config.vdf. Is the file corrupt?".to_string()));
+			return Err(AlmightyError::Generic("无法解析 Steam config.vdf 文件。文件是否已损坏？".to_string()));
 		}
 
 		let steam_config: SteamConfig = steam_config.unwrap();
@@ -1217,11 +1217,11 @@ where
 
 	// TODO: phf_map for these
 	let integrity_status_strings = HashMap::from([
-		(IntegrityStatus::NeedDelete, "Needs Delete"),
-		(IntegrityStatus::NeedOriginal, "Needs Original + Fix"),
-		(IntegrityStatus::NeedWipeFix, "Needs Wipe + Fix"),
-		(IntegrityStatus::NeedFix, "Needs Fix"),
-		(IntegrityStatus::Fixed, "Already Fixed")
+		(IntegrityStatus::NeedDelete, "需删除"),
+		(IntegrityStatus::NeedOriginal, "需原文件+修复"),
+		(IntegrityStatus::NeedWipeFix, "需清理+修复"),
+		(IntegrityStatus::NeedFix, "需修复"),
+		(IntegrityStatus::Fixed, "已修复")
 	]);
 
 	#[allow(clippy::type_complexity)]
@@ -1377,7 +1377,7 @@ where
 
 		for (_, integrity_status) in patch_results {
 			if integrity_status != IntegrityStatus::Fixed {
-				return Err(AlmightyError::Generic("Failed to patch one or more files!".to_string()));
+				return Err(AlmightyError::Generic("修补一个或多个文件失败！".to_string()));
 			}
 		}
 

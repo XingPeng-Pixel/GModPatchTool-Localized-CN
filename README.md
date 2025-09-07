@@ -40,7 +40,7 @@
   - 查看 [#188](https://github.com/solsticegamestudios/GModPatchTool/issues/188) 了解我们为何默认不启用这些设置
 
 # ❓ 玩家：如何安装/使用
-下载 **[最新版本](https://github.com/solsticegamestudios/GModPatchTool/releases)**（或通过国内镜像 **[gh-proxy](https://gh-proxy.com/https://github.com/solsticegamestudios/GModPatchTool/releases)**）并运行应用程序。
+下载 **[最新版本](https://github.com/solsticegamestudios/GModPatchTool/releases)**（或通过我的自建镜像 **[gh-proxy](https://gh.xpcdn.ggff.net/github.com/solsticegamestudios/GModPatchTool/releases)**）并运行应用程序。
 
 需要更深入的指南？请查看 https://www.solsticegamestudios.com/fixmedia/
 
