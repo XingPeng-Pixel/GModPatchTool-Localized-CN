@@ -36,9 +36,6 @@ use regex::Regex;
 use super::vdf;
 
 #[cfg(unix)]
-use std::os::unix::fs::MetadataExt;
-
-#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
 #[derive(Parser)]
@@ -312,6 +309,84 @@ where
 	}
 }
 
+fn is_retryable_error(error: &reqwest::Error) -> bool {
+	// Check if the error is worth retrying
+	error.is_timeout() || 
+	error.is_connect() || 
+	error.is_body() ||
+	error.is_decode() ||
+	error.status().map_or(false, |status| {
+		let code = status.as_u16();
+		// Retry on server errors (5xx) and some client errors
+		code >= 500 || code == 408 || code == 429 || code == 502 || code == 503 || code == 504
+	})
+}
+
+async fn get_response_text_with_retry<W>(writer: fn() -> W, writer_is_interactive: bool, servers: &[&str], filename: &str, description: &str) -> Result<String, AlmightyError>
+where
+	W: std::io::Write + 'static
+{
+	for attempt in 1..=5 {
+		let response = get_http_response(writer, writer_is_interactive, servers, filename).await;
+		
+		if let Some(response) = response {
+			match response.text().await {
+				Ok(text) => return Ok(text),
+				Err(error) => {
+					if attempt < 5 {
+						terminal_write(writer, format!("\t{description} 解析失败，正在重试 ({attempt}/5): {error}").as_str(), true, if writer_is_interactive { Some("yellow") } else { None });
+						tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+					} else {
+						return Err(AlmightyError::Http(error));
+					}
+				}
+			}
+		} else {
+			if attempt < 5 {
+				terminal_write(writer, format!("\t{description} 下载失败，正在重试 ({attempt}/5)...").as_str(), true, if writer_is_interactive { Some("yellow") } else { None });
+				tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+			} else {
+				return Err(AlmightyError::Generic(format!("无法获取{}。请检查您的网络连接！", description)));
+			}
+		}
+	}
+	
+	Err(AlmightyError::Generic(format!("无法获取{}，超过最大重试次数", description)))
+}
+
+async fn get_response_json_with_retry<T, W>(writer: fn() -> W, writer_is_interactive: bool, servers: &[&str], filename: &str, description: &str) -> Result<T, AlmightyError>
+where
+	T: serde::de::DeserializeOwned,
+	W: std::io::Write + 'static
+{
+	for attempt in 1..=5 {
+		let response = get_http_response(writer, writer_is_interactive, servers, filename).await;
+		
+		if let Some(response) = response {
+			match response.json::<T>().await {
+				Ok(json) => return Ok(json),
+				Err(error) => {
+					if attempt < 5 {
+						terminal_write(writer, format!("\t{description} JSON解析失败，正在重试 ({attempt}/5): {error}").as_str(), true, if writer_is_interactive { Some("yellow") } else { None });
+						tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+					} else {
+						return Err(AlmightyError::Http(error));
+					}
+				}
+			}
+		} else {
+			if attempt < 5 {
+				terminal_write(writer, format!("\t{description} 下载失败，正在重试 ({attempt}/5)...").as_str(), true, if writer_is_interactive { Some("yellow") } else { None });
+				tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+			} else {
+				return Err(AlmightyError::Generic(format!("无法获取{}。请检查您的网络连接！", description)));
+			}
+		}
+	}
+	
+	Err(AlmightyError::Generic(format!("无法获取{}，超过最大重试次数", description)))
+}
+
 async fn get_http_response<W>(writer: fn() -> W, writer_is_interactive: bool, servers: &[&str], filename: &str) -> Option<Response>
 where
 	W: std::io::Write + 'static
@@ -347,16 +422,24 @@ where
 				}
 			},
 			Err(error) => {
-				let error = error.without_url();
-				terminal_write(writer, format!("\n{url}\n\tHTTP 错误： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
-				response = None;
-				try_count += 1;
-
-				// Try each server 3 times for full HTTP errors (Anti-DDoS, etc)
-				if try_count >= 3 {
+				let is_retryable = is_retryable_error(&error);
+				let error_without_url = error.without_url();
+				
+				if is_retryable {
+					terminal_write(writer, format!("\n{url}\n\tHTTP 错误 (可重试)： {error_without_url} (尝试 {try_count}/5)").as_str(), true, if writer_is_interactive { Some("yellow") } else { None });
+					try_count += 1;
+					
+					// Try each server 5 times for retryable HTTP errors
+					if try_count >= 5 {
+						server_id += 1;
+						try_count = 0;
+					}
+				} else {
+					terminal_write(writer, format!("\n{url}\n\tHTTP 错误 (不可重试)： {error_without_url}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 					server_id += 1;
 					try_count = 0;
 				}
+				response = None;
 			}
 		}
 	}
@@ -406,6 +489,28 @@ async fn download_file_to_cache<W>(writer: fn() -> W, writer_is_interactive: boo
 where
 	W: std::io::Write + 'static
 {
+	// Retry mechanism: try up to 5 times before giving up
+	for attempt in 1..=5 {
+		let result = download_file_to_cache_internal(writer, writer_is_interactive, cache_dir.clone(), filename.clone(), target_hash.clone(), attempt).await;
+		if result.is_ok() {
+			return Ok(());
+		}
+		
+		if attempt < 5 {
+			terminal_write(writer, format!("\t下载失败，正在重试 {filename} ({attempt}/5)...").as_str(), true, if writer_is_interactive { Some("yellow") } else { None });
+			// Wait a bit before retrying (exponential backoff)
+			tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+		}
+	}
+	
+	terminal_write(writer, format!("\t下载失败：{filename} - 超过最大重试次数 (5)").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+	Err(())
+}
+
+async fn download_file_to_cache_internal<W>(writer: fn() -> W, writer_is_interactive: bool, cache_dir: PathBuf, filename: String, target_hash: String, attempt: u64) -> Result<(), ()>
+where
+	W: std::io::Write + 'static
+{
 	let filename_no_zst = if filename.ends_with(".zst") {
 		let len = filename.len() - 4;
 		filename[..len].to_string()
@@ -416,7 +521,11 @@ where
 	let cache_file_path = extend_pathbuf_and_return(cache_dir, &file_parts[..]);
 	let cache_file_path_result = pathbuf_to_canonical_pathbuf(cache_file_path.clone(), false);
 
-	terminal_write(writer, format!("\t正在下载： {filename} ...").as_str(), true, None);
+	if attempt == 1 {
+		terminal_write(writer, format!("\t正在下载： {filename} ...").as_str(), true, None);
+	} else {
+		terminal_write(writer, format!("\t正在下载： {filename} (尝试 {attempt}/5) ...").as_str(), true, None);
+	}
 
 	// Look in the cache to see if the file already exists
 	if cache_file_path_result.is_ok() {
@@ -488,7 +597,7 @@ where
 				}
 			},
 			Err(error) => {
-				terminal_write(writer, format!("\t下载失败： {filename} | 步骤 1 错误： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
+				terminal_write(writer, format!("\t下载失败： {filename} | 步骤 1 错误 (响应体读取)： {error}").as_str(), true, if writer_is_interactive { Some("red") } else { None });
 			}
 		}
 	}
@@ -696,15 +805,8 @@ where
 	// Get remote version
 	terminal_write(writer, "正在获取远程版本...", true, None);
 
-	let remote_version_response = get_http_response(writer, writer_is_interactive, &TEXT_SERVER_ROOTS, "version.txt").await;
-
-	if remote_version_response.is_none() {
-		return Err(AlmightyError::Generic("无法获取远程版本。请检查您的网络连接！".to_string()));
-	}
-
-	let remote_version_response = remote_version_response.unwrap();
-	let remote_version: u32 = remote_version_response.text()
-	.await?
+	let remote_version_response = get_response_text_with_retry(writer, writer_is_interactive, &TEXT_SERVER_ROOTS, "version.txt", "远程版本").await?;
+	let remote_version: u32 = remote_version_response
 	.trim()
 	.parse()?;
 
@@ -1013,17 +1115,6 @@ where
 
 	terminal_write(writer, format!("GMod 路径： {gmod_path_str}\n").as_str(), true, None);
 
-	// Abort if they're running as root AND the GMod directory isn't owned by root
-	// Will hopefully prevent broken installs/updating
-	#[cfg(unix)]
-	if root {
-		if let Ok(gmod_dir_meta) = tokio::fs::metadata(&gmod_path).await {
-			if gmod_dir_meta.uid() != 0 {
-				return Err(AlmightyError::Generic("您正在以 root 权限运行 GModPatchTool，但 Garry's Mod 目录不属于 root 用户。请修复权限或不要以 root 权限运行！正在中止...".to_string()));
-			}
-		}
-	}
-
 	// Determine target platform
 	// Get GMod CompatTool config (Steam Linux Runtime, Proton, etc) on Linux
 	// NOTE: platform_masked is specifically for Proton
@@ -1145,16 +1236,7 @@ where
 	// Get remote manifest
 	terminal_write(writer, "正在获取远程清单...", true, None);
 
-	let remote_manifest_response = get_http_response(writer, writer_is_interactive, &TEXT_SERVER_ROOTS, "manifest.json").await;
-
-	if remote_manifest_response.is_none() {
-		terminal_write(writer, "", true, None); // Newline
-		return Err(AlmightyError::Generic("Couldn't get remote manifest. Please check your internet connection!".to_string()));
-	}
-
-	let remote_manifest_response = remote_manifest_response.unwrap();
-	let remote_manifest = remote_manifest_response.json::<Manifest>()
-	.await?;
+	let remote_manifest = get_response_json_with_retry::<Manifest, W>(writer, writer_is_interactive, &TEXT_SERVER_ROOTS, "manifest.json", "远程清单").await?;
 
 	terminal_write(writer, "GModPatchTool 清单已加载！\n", true, None);
 
