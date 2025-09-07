@@ -259,67 +259,67 @@ pub fn main() {
 	if let Err(original_src) = original_src {
 		cmd.error(
 			ErrorKind::InvalidValue,
-			format!("Original Path (Input): {original_src}"),
+			format!("原始路径（输入）无效： {original_src}"),
 		)
 		.exit();
 	}
 
 	let original_src = original_src.unwrap();
 	let original_src_str = original_src.to_string_lossy();
-	println!("Original Path (Input): {original_src_str}\n");
+	println!("原始路径（输入）： {original_src_str}\n");
 
 	if let Err(fixed_src) = fixed_src {
 		cmd.error(
 			ErrorKind::InvalidValue,
-			format!("Fixed Path (Input): {fixed_src}"),
+			format!("已修复路径（输入）无效： {fixed_src}"),
 		)
 		.exit();
 	}
 
 	let fixed_src = fixed_src.unwrap();
 	let fixed_src_str = fixed_src.to_string_lossy();
-	println!("Fixed Path (Input): {fixed_src_str}\n");
+	println!("已修复路径（输入）： {fixed_src_str}\n");
 
 	if let Err(patch_dest) = patch_dest {
 		cmd.error(
 			ErrorKind::InvalidValue,
-			format!("Patch Path (Output): {patch_dest}"),
+			format!("补丁路径（输出）无效： {patch_dest}"),
 		)
 		.exit();
 	}
 
 	let patch_dest = patch_dest.unwrap();
 	let patch_dest_str = patch_dest.to_string_lossy();
-	println!("Patch Path (Output): {patch_dest_str}\n");
+	println!("补丁路径（输出）： {patch_dest_str}\n");
 
 	if let Err(original_dest) = original_dest {
 		cmd.error(
 			ErrorKind::InvalidValue,
-			format!("Original Compressed Path (Output): {original_dest}"),
+			format!("原始压缩路径（输出）无效： {original_dest}"),
 		)
 		.exit();
 	}
 
 	let original_dest = original_dest.unwrap();
 	let original_dest_str = original_dest.to_string_lossy();
-	println!("Original Compressed Path (Output): {original_dest_str}\n");
+	println!("原始压缩路径（输出）： {original_dest_str}\n");
 
 	if let Err(symbol_dest) = symbol_dest {
 		cmd.error(
 			ErrorKind::InvalidValue,
-			format!("Symbol Path (Output): {symbol_dest}"),
+			format!("符号路径（输出）无效： {symbol_dest}"),
 		)
 		.exit();
 	}
 
 	let symbol_dest = symbol_dest.unwrap();
 	let symbol_dest_str = symbol_dest.to_string_lossy();
-	println!("Symbol Path (Output): {symbol_dest_str}\n");
+	println!("符号路径（输出）： {symbol_dest_str}\n");
 
 	if original_src == fixed_src {
 		cmd.error(
 			ErrorKind::ValueValidation,
-			"Original Source cannot match Fixed Source.",
+			"原始源不能与已修复源相同。",
 		)
 		.exit();
 	}
@@ -327,7 +327,7 @@ pub fn main() {
 	if original_dest == fixed_src {
 		cmd.error(
 			ErrorKind::ValueValidation,
-			"Original Dest cannot match Fixed Source.",
+			"原始输出目录不能与已修复源相同。",
 		)
 		.exit();
 	}
@@ -336,44 +336,44 @@ pub fn main() {
 	manifest_file_path.pop();
 	let manifest_file_path = extend_pathbuf_and_return(manifest_file_path, &["manifest.json"]);
 
-	println!("Deleting Old Patches Dir, Compressed Original Dir, and Manifest...");
+	println!("正在删除旧的补丁目录、原始压缩目录和清单...");
 
 	let remove_result = std::fs::remove_dir_all(&patch_dest);
 	if let Err(remove_result) = remove_result {
-		println!("Failed to remove old patches dir: {remove_result}");
+		println!("删除旧的补丁目录失败: {remove_result}");
 	}
 
 	let create_result = std::fs::create_dir(&patch_dest);
 	if let Err(create_result) = create_result {
-		println!("Failed to create new patches dir: {create_result}");
+		println!("创建新的补丁目录失败: {create_result}");
 	}
 
 	let remove_result = std::fs::remove_dir_all(&original_dest);
 	if let Err(remove_result) = remove_result {
-		println!("Failed to remove old original compressed dir: {remove_result}");
+		println!("删除旧的原始压缩目录失败: {remove_result}");
 	}
 
 	let create_result = std::fs::create_dir(&original_dest);
 	if let Err(create_result) = create_result {
-		println!("Failed to create new original compressed dir: {create_result}");
+		println!("创建新的原始压缩目录失败: {create_result}");
 	}
 
 	let remove_result = std::fs::remove_dir_all(&symbol_dest);
 	if let Err(remove_result) = remove_result {
-		println!("Failed to remove old symbol dir: {remove_result}");
+		println!("删除旧的符号目录失败: {remove_result}");
 	}
 
 	let create_result = std::fs::create_dir(&symbol_dest);
 	if let Err(create_result) = create_result {
-		println!("Failed to create new symbol dir: {create_result}");
+		println!("创建新的符号目录失败: {create_result}");
 	}
 
 	let remove_result = std::fs::remove_file(&manifest_file_path);
 	if let Err(remove_result) = remove_result {
-		println!("Failed to remove old manifest: {remove_result}");
+		println!("删除旧的清单失败: {remove_result}");
 	}
 
-	println!("\n*** GENERATING PATCH FILES ***\n");
+	println!("\n*** 正在生成补丁文件 ***\n");
 
 	let mut files: HashMap<String, HashMap<String, PathBuf>> = HashMap::new();
 	get_files_recursive("original", "".to_string(), &mut files, original_src);
@@ -385,8 +385,8 @@ pub fn main() {
 		let result = hash_diff_compress_file(patch_dest.clone(), filename, file_paths, original_dest.clone(), symbol_dest.clone());
 
 		match result {
-			Ok((time, hashes)) => {
-				println!("\t{filename}\n\t\tTook {time} second(s)");
+				Ok((time, hashes)) => {
+					println!("\t{filename}\n\t\t耗时 {time} 秒");
 
 				let file_parts: Vec<&str> = filename.split("/").collect();
 				let platform = file_parts[0].to_string();
@@ -439,7 +439,7 @@ pub fn main() {
 
 	let manifest = manifest_guard.deref();
 
-	println!("\n*** GENERATING MANIFEST JSON ***\n");
+	println!("\n*** 生成清单  ***\n");
 
 	// Replace the stupid double-space indentation with proper tabbed indentation
 	// Also add newline at the end to make Git happy
@@ -457,5 +457,5 @@ pub fn main() {
 	write_result.unwrap();
 
 	let now = now.elapsed().as_secs_f64();
-	println!("Patch generation complete! Took {now} second(s).");
+	println!("补丁生成完毕! 耗时 {now} 秒");
 }
