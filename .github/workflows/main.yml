@@ -1,77 +1,108 @@
-name: All Platform Build
+name: Build and Release
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main, master, dev ]
   release:
-    types: [released]
-  #push:
-  #  branches:
-  #    - master
+    types: [created]
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   build:
+    name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-20.04, macos-13]
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: gmodpatchtool.exe
+            asset_name: gmodpatchtool-windows-x64.exe
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: gmodpatchtool
+            asset_name: gmodpatchtool-linux-x64
 
     steps:
-      - name: Repo Checkout
-        uses: actions/checkout@main
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: Setup Python
-        uses: actions/setup-python@main
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          python-version: '3.12' # PyInstaller supports up to 3.12
+          targets: ${{ matrix.target }}
 
-      - name: Get Dependencies and PyInstaller
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade wheel
-          pip install --upgrade -r requirements.txt
-          pip install pyinstaller==6.10.0
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev
 
-      # Windows Defender is throwing false-positive matches
-      #- name: Build PyInstaller Bootloader
-      #  if: ${{ runner.os == 'Windows' }}
-      #  run: |
-      #    git clone https://github.com/pyinstaller/pyinstaller.git --depth 1 --branch "v6.10.0"
-      #    cd pyinstaller/bootloader
-      #    python ./waf all
-      #    rm -r "$(python -c "import os, sys; print(os.path.dirname(sys.executable))")/Lib/site-packages/PyInstaller/bootloader"
-      #    cp -r "../PyInstaller/bootloader" "$(python -c "import os, sys; print(os.path.dirname(sys.executable))")/Lib/site-packages/PyInstaller"
+      - name: Build project
+        run: cargo build --verbose --release --target ${{ matrix.target }}
 
-      - name: Install Tkinter
-        if: ${{ runner.os == 'macOS' }}
-        run: brew install python-tk@3.12 && echo -n 'export PATH="/usr/local/opt/python/libexec/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc && echo -n 'export PATH="/usr/local/opt/python/libexec/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+      - name: Run tests
+        run: cargo test --verbose --target ${{ matrix.target }}
 
-      - name: PyInstaller Build
-        run: ${{ runner.os == 'Windows' && 'iex ' || ''}}$(cat pyinstaller_${{ runner.os == 'Windows' && 'windows' || runner.os == 'Linux' && 'linux' || 'macos' }}.txt)
+      - name: Prepare artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} artifacts/${{ matrix.asset_name }}
+          else
+            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} artifacts/${{ matrix.asset_name }}
+            chmod +x artifacts/${{ matrix.asset_name }}
+          fi
 
-      - name: PyInstaller Build (ZIP)
-        if: ${{ runner.os == 'Windows' }}
-        run: Compress-Archive "dist/GModCEFCodecFix" "GModCEFCodecFix.zip"
-
-      - name: Get Latest Release Info
-        id: latest-release
-        uses: actions/github-script@main
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            return github.rest.repos.getLatestRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            })
+          name: ${{ matrix.asset_name }}
+          path: artifacts/${{ matrix.asset_name }}
 
-      # TODO: Use https://github.com/softprops/action-gh-release instead (is it drop-in or do we have to do stuff?)
-      - name: Upload Release Binary
-        uses: actions/upload-release-asset@v1
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -la artifacts/
+
+      - name: Upload Windows release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/gmodpatchtool-windows-x64.exe/gmodpatchtool-windows-x64.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux release asset
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ fromJSON(steps.latest-release.outputs.result).data.upload_url }}
-          asset_path: ./dist/GModCEFCodecFix${{ runner.os == 'Windows' && '.zip' || '' }}
-          asset_name: GModCEFCodecFix-${{ runner.os }}${{ runner.os == 'Windows' && '.zip' || '' }}
-          asset_content_type: application/octet-stream
+          files: artifacts/gmodpatchtool-linux-x64/gmodpatchtool-linux-x64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
