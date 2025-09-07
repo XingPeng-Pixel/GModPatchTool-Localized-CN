@@ -1,12 +1,12 @@
 // Version and Manifest files
 const TEXT_SERVER_ROOTS: [&str; 2] = [
-	"https://raw.githubusercontent.com/solsticegamestudios/GModPatchTool/refs/heads/files/",
+	"https://gh-proxy.com/https://raw.githubusercontent.com/solsticegamestudios/GModPatchTool/refs/heads/files/",
 	"https://www.solsticegamestudios.com/gmodpatchtool/"
 ];
 
 // Patch files
 const BINARY_SERVER_ROOTS: [&str; 2] = [
-	"https://media.githubusercontent.com/media/solsticegamestudios/GModPatchTool/refs/heads/files/",
+	"https://gh-proxy.com/https://media.githubusercontent.com/media/solsticegamestudios/GModPatchTool/refs/heads/files/",
 	"https://www.solsticegamestudios.com/gmodpatchtool/" // TODO: Webhook that triggers git pull and clears the cache on Cloudflare
 ];
 
@@ -724,7 +724,7 @@ where
 	if local_version >= remote_version {
 		terminal_write(writer, format!("You are running the latest version of GModPatchTool [Local: {local_version} / Remote: {remote_version}]!\n").as_str(), true, if writer_is_interactive { Some("green") } else { None });
 	} else {
-		terminal_write(writer, "WARNING: GModPatchTool is out of date! Please get the latest version at\nhttps://github.com/solsticegamestudios/GModPatchTool/releases", true, if writer_is_interactive { Some("red") } else { None });
+	terminal_write(writer, "WARNING: GModPatchTool is out of date! Please get the latest version at\nhttps://gh-proxy.com/https://github.com/solsticegamestudios/GModPatchTool/releases", true, if writer_is_interactive { Some("red") } else { None });
 
 		let mut secs_to_continue: u8 = 5;
 		while secs_to_continue > 0 {

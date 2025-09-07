@@ -38,7 +38,7 @@
   - See [#188](https://github.com/solsticegamestudios/GModPatchTool/issues/188) for why we don't turn these on by default
 
 # ❓ Players: How to Install / Use
-Download the **[Latest Release](https://github.com/solsticegamestudios/GModPatchTool/releases)** and run the application.
+Download the **[Latest Release](https://github.com/solsticegamestudios/GModPatchTool/releases)** (or via Chinese mirror **[gh-proxy](https://gh-proxy.com/https://github.com/solsticegamestudios/GModPatchTool/releases)**) and run the application.
 
 Need a more in-depth guide? Take a look at https://www.solsticegamestudios.com/fixmedia/
 
