@@ -11,21 +11,21 @@ mod gui;
 mod vdf;
 
 const ABOUT: &str = r#"   ________  ___          ______        __       __  ______            __
-  / ____/  |/  /___  ____/ / __ \____ _/ /______/ /_/_  __/___  ____  / /
+	/ ____/  |/  /___  ____/ / __ \____ _/ /______/ /_/_  __/___  ____  / /
  / / __/ /|_/ / __ \/ __  / /_/ / __ `/ __/ ___/ __ \/ / / __ \/ __ \/ /
-/ /_/ / /  / / /_/ / /_/ / ____/ /_/ / /_/ /__/ / / / / / /_/ / /_/ / /
+ / /_/ / /  / / /_/ / /_/ / ____/ /_/ / /_/ /__/ / / / / / /_/ / /_/ / /
 \____/_/  /_/\____/\__,_/_/    \__,_/\__/\___/_/ /_/_/  \____/\____/_/
-GModPatchTool (formerly GModCEFCodecFix)
+GModPatchTool (原名 GModCEFCodecFix)
 
 Copyright 2020-2025, Solstice Game Studios (www.solsticegamestudios.com)
 LICENSE: GNU General Public License v3.0
 
-Purpose: Patches Garry's Mod to Update/Improve Chromium Embedded Framework (CEF) and Fix common launch/performance issues (esp. on Linux/Proton/macOS).
+用途：为 Garry's Mod 打补丁以更新/改善 Chromium Embedded Framework (CEF)，并修复常见的启动/性能问题（尤其是在 Linux/Proton/macOS 上）。
 
-Guide: https://www.solsticegamestudios.com/fixmedia/
-FAQ/Common Issues: https://www.solsticegamestudios.com/fixmedia/faq/
-Discord: https://www.solsticegamestudios.com/discord/
-Email: contact@solsticegamestudios.com
+指南： https://www.solsticegamestudios.com/fixmedia/
+常见问题/故障排除： https://www.solsticegamestudios.com/fixmedia/faq/
+Discord： https://www.solsticegamestudios.com/discord/
+电子邮件： contact@solsticegamestudios.com
 "#;
 
 use std::path::{Path, PathBuf};

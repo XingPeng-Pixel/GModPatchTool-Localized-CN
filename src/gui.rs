@@ -70,7 +70,7 @@ impl App {
 
 		(
 			Self {
-				title: String::from("GModPatchTool"),
+				title: String::from("GMod补丁工具"),
 				term: iced_term::Terminal::new(term_id, term_settings),
 			},
 			Task::none(),
@@ -121,7 +121,7 @@ impl App {
 		}
 	}
 
-	fn view(&self) -> Element<Event, Theme, iced::Renderer> {
+	    fn view(&self) -> Element<'_, Event, Theme, iced::Renderer> {
 		// TODO: Scrollbar for Terminal
 		container(TerminalView::show(&self.term).map(Event::Terminal))
 			.width(Length::Fill)
