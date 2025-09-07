@@ -35,9 +35,6 @@ use regex::Regex;
 
 use super::vdf;
 
-#[cfg(windows)]
-use is_elevated::is_elevated;
-
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 
@@ -69,11 +66,7 @@ struct Args {
 
 	/// Force redownload all patch files from scratch and clear the GModPatchTool cache directory on exit
 	#[arg(long)]
-	disable_cache: bool,
-
-	/// Allow running the tool as root/admin (NOT RECOMMENDED!!!)
-	#[arg(long)]
-	run_as_root_with_security_risk: bool
+	disable_cache: bool
 }
 
 const COLOR_LOOKUP: Map<&'static str, &'static str> =
@@ -673,12 +666,6 @@ where
 	new_integrity_status
 }
 
-#[cfg(unix)]
-#[link(name = "c")]
-unsafe extern "C" {
-	safe fn geteuid() -> u32;
-}
-
 async fn main_script_internal<W>(writer: fn() -> W, writer_is_interactive: bool, args: Args) -> Result<(), AlmightyError>
 where
 	W: std::io::Write + 'static
@@ -737,35 +724,6 @@ where
 		// Clear continuing line
 		if writer_is_interactive {
 			terminal_write(writer, "\x1B[0K\n", false, None);
-		}
-	}
-
-	// Warn/Exit if running as root/admin
-	#[cfg(windows)]
-	let root = is_elevated();
-
-	#[cfg(unix)]
-	let root = geteuid() == 0;
-
-	if root {
-		if args.run_as_root_with_security_risk {
-			terminal_write(writer, "警告：您正在以 root/管理员权限运行 GModPatchTool。 这可能导致问题，通常不需要。", true, if writer_is_interactive { Some("red") } else { None });
-
-			let mut secs_to_continue: u8 = 10;
-			while secs_to_continue > 0 {
-				terminal_write(writer, format!("\t将在 {secs_to_continue} 秒后继续...\r").as_str(), false, if writer_is_interactive { Some("yellow") } else { None });
-				writer().flush().unwrap();
-				tokio::time::sleep(time::Duration::from_secs(1)).await;
-				secs_to_continue -= 1;
-			}
-
-			// Clear continuing line
-			if writer_is_interactive {
-				terminal_write(writer, "\x1B[0K\n", false, None);
-			}
-		} else {
-			let elevated_msg = format!("You are running GModPatchTool as root/with admin privileges{}. This may cause issues and is not typically necessary.\n\nIF YOU KNOW WHAT YOU'RE DOING, you can allow this by running the tool with --run-as-root-with-security-risk. Aborting...", if cfg!(windows) { " (is User Account Control turned off?)" } else { "" });
-			return Err(AlmightyError::Generic(elevated_msg));
 		}
 	}
 
