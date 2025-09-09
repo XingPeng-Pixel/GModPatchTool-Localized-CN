@@ -24,7 +24,6 @@ use phf::phf_map;
 use phf::Map;
 use std::time;
 use steamid::SteamId;
-use sysinfo::System;
 use std::fs::File;
 use std::io;
 use reqwest::Response;
@@ -32,6 +31,7 @@ use tokio::time::Instant;
 use tokio::task::JoinSet;
 use qbsdiff::Bspatch;
 use regex::Regex;
+use sysinfo::System;
 
 use super::vdf;
 
@@ -780,24 +780,11 @@ where
 	W: std::io::Write + 'static
 {
 	let now = Instant::now();
-	let sys = System::new_all();
-
-	// Abort if another instance is already running
-	let pid_path = extend_pathbuf_and_return(std::env::current_exe().unwrap().parent().unwrap().to_path_buf(), &["gmodpatchtool.pid"]);
-	let running_instance_pid = tokio::fs::read_to_string(&pid_path).await;
-	if let Ok(pid) = running_instance_pid {
-		if let Ok(pid) = pid.parse::<usize>() {
-			if sys.process(sysinfo::Pid::from(pid)).is_some() {
-				return Err(AlmightyError::Generic(format!("GModPatchTool 的另一个实例正在运行 ({pid})。")));
-			}
-		}
-	}
-
-	// Create PID lockfile
-	let pid_write_result = tokio::fs::write(&pid_path, std::process::id().to_string()).await;
-	if let Err(error) = pid_write_result {
-		return Err(AlmightyError::Generic(format!("创建 gmodpatchtool.pid 文件失败： {error}")));
-	}
+	
+	// Initialize system info for process detection
+	let mut sys = System::new();
+	// refresh_processes now requires arguments in sysinfo 0.37.0; use refresh_all() to refresh processes here
+	sys.refresh_all();
 
 	// Get local version
 	let local_version: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap();
@@ -1182,7 +1169,7 @@ where
 
 		let mut open_bracket_count: usize = 1;
 		let mut webstorage_close_bracket_offset: Option<usize> = None;
-		for (offset, char) in (0_usize..).zip(steam_user_localconfig_str[webstorage_open_bracket..].chars()) {
+		for (char_byte_offset, char) in steam_user_localconfig_str[webstorage_open_bracket..].char_indices() {
 			if char == '{' {
 				open_bracket_count += 1;
 			} else if char == '}' {
@@ -1190,7 +1177,8 @@ where
 			}
 
 			if open_bracket_count == 0 {
-				webstorage_close_bracket_offset = Some(offset);
+				// Add the byte length of the closing bracket character to point after it
+				webstorage_close_bracket_offset = Some(char_byte_offset + char.len_utf8());
 				break;
 			}
 		}
@@ -1534,20 +1522,6 @@ where
 fn terminal_exit_handler() {
 	println!("\n按回车键退出...");
 	std::io::stdin().read_line(&mut String::new()).unwrap();
-
-	// Delete PID lockfile
-	let pid_path = extend_pathbuf_and_return(std::env::current_exe().unwrap().parent().unwrap().to_path_buf(), &["gmodpatchtool.pid"]);
-	let running_instance_pid = std::fs::read_to_string(&pid_path);
-	if let Ok(pid) = running_instance_pid {
-		if let Ok(pid) = pid.parse::<u32>() {
-			if pid == std::process::id() {
-				let pid_remove_result = std::fs::remove_file(&pid_path);
-				if let Err(error) = pid_remove_result {
-					println!("删除 gmodpatchtool.pid 失败： {error}");
-				}
-			}
-		}
-	}
 }
 
 fn main_script<W>(writer: fn() -> W, writer_is_interactive: bool, args: Args) -> Result<(), AlmightyError>
