@@ -1,13 +1,13 @@
 // Version and Manifest files
 const TEXT_SERVER_ROOTS: [&str; 2] = [
-	"https://gh.xpcdn.ggff.net/raw.githubusercontent.com/solsticegamestudios/GModPatchTool/refs/heads/files/",
+	"http://x9.sjcmc.cn:34228/d/Share/GModPatchTool/",
 	"https://www.solsticegamestudios.com/gmodpatchtool/"
 ];
 
 // Patch files
 const BINARY_SERVER_ROOTS: [&str; 2] = [
-	"https://gh.xpcdn.ggff.net/media.githubusercontent.com/media/solsticegamestudios/GModPatchTool/refs/heads/files/",
-	"https://www.solsticegamestudios.com/gmodpatchtool/" // TODO: Webhook that triggers git pull and clears the cache on Cloudflare
+	"http://x9.sjcmc.cn:34228/d/Share/GModPatchTool/",
+	"https://www.solsticegamestudios.com/gmodpatchtool/" // 废弃官方源，仅占位符
 ];
 
 //const GMOD_STEAM_APPID: u64 = 4000;
@@ -1169,7 +1169,7 @@ where
 
 		let mut open_bracket_count: usize = 1;
 		let mut webstorage_close_bracket_offset: Option<usize> = None;
-		for (char_byte_offset, char) in steam_user_localconfig_str[webstorage_open_bracket..].char_indices() {
+		for (offset, char) in (0_usize..).zip(steam_user_localconfig_str[webstorage_open_bracket..].chars()) {
 			if char == '{' {
 				open_bracket_count += 1;
 			} else if char == '}' {
@@ -1177,8 +1177,7 @@ where
 			}
 
 			if open_bracket_count == 0 {
-				// Add the byte length of the closing bracket character to point after it
-				webstorage_close_bracket_offset = Some(char_byte_offset + char.len_utf8());
+				webstorage_close_bracket_offset = Some(offset);
 				break;
 			}
 		}
@@ -1201,11 +1200,11 @@ where
 	if let Some(steam_user_localconfig_gmod) = steam_user_localconfig_gmod {
 		if let Some(steam_user_localconfig_gmod_launchopts) = &steam_user_localconfig_gmod.launch_options {
 			if steam_user_localconfig_gmod_launchopts.contains("-nochromium") {
-				terminal_write(writer, "警告：GMod 的启动选项中包含 -nochromium！CEF 无法在此情况下工作。\n\t请前往 Steam > Garry's Mod > 属性 > 常规，将其删除。\n\t另外，如果安装了 gmod-lua-menu，请卸载它。", true, if writer_is_interactive { Some("yellow") } else { None });
+				terminal_write(writer, "WARNING: -nochromium is in GMod's Launch Options! CEF will not work with this.\n\tPlease go to Steam > Garry's Mod > Properties > General and remove it.\n\tAdditionally, if you have gmod-lua-menu installed, uninstall it.", true, if writer_is_interactive { Some("yellow") } else { None });
 
 				let mut secs_to_continue: u8 = 5;
 				while secs_to_continue > 0 {
-					terminal_write(writer, format!("\t将在 {secs_to_continue} 秒后继续...\r").as_str(), false, if writer_is_interactive { Some("yellow") } else { None });
+					terminal_write(writer, format!("\tContinuing in {secs_to_continue} second(s)...\r").as_str(), false, if writer_is_interactive { Some("yellow") } else { None });
 					writer().flush().unwrap();
 					tokio::time::sleep(time::Duration::from_secs(1)).await;
 					secs_to_continue -= 1;
@@ -1222,11 +1221,20 @@ where
 	}
 
 	// Get remote manifest
-	terminal_write(writer, "正在获取远程清单...", true, None);
+	terminal_write(writer, "Getting remote manifest...", true, None);
 
-	let remote_manifest = get_response_json_with_retry::<Manifest, W>(writer, writer_is_interactive, &TEXT_SERVER_ROOTS, "manifest.json", "远程清单").await?;
+	let remote_manifest_response = get_http_response(writer, writer_is_interactive, &TEXT_SERVER_ROOTS, "manifest.json").await;
 
-	terminal_write(writer, "GModPatchTool 清单已加载！\n", true, None);
+	if remote_manifest_response.is_none() {
+		terminal_write(writer, "", true, None); // Newline
+		return Err(AlmightyError::Generic("Couldn't get remote manifest. Please check your internet connection!".to_string()));
+	}
+
+	let remote_manifest_response = remote_manifest_response.unwrap();
+	let remote_manifest = remote_manifest_response.json::<Manifest>()
+		.await?;
+
+	terminal_write(writer, "GModPatchTool Manifest Loaded!\n", true, None);
 
 	let platform_branches = remote_manifest.get(platform_masked);
 	if platform_branches.is_none() {
@@ -1241,14 +1249,14 @@ where
 	let platform_branch_files = platform_branch_files.unwrap();
 
 	// Determine file integrity status
-	terminal_write(writer, "正在确定文件完整性状态...", true, None);
+	terminal_write(writer, "Determining file integrity status...", true, None);
 
 	// TODO: phf_map for these
 	let integrity_status_strings = HashMap::from([
-		(IntegrityStatus::NeedDelete, "需删除"),
-		(IntegrityStatus::NeedOriginal, "需原文件+修复"),
-		(IntegrityStatus::NeedWipeFix, "需清理+修复"),
-		(IntegrityStatus::NeedFix, "需修复"),
+		(IntegrityStatus::NeedDelete, "需要删除"),
+		(IntegrityStatus::NeedOriginal, "需要本体+修复"),
+		(IntegrityStatus::NeedWipeFix, "需要清除+修复"),
+		(IntegrityStatus::NeedFix, "需要修复"),
 		(IntegrityStatus::Fixed, "已修复")
 	]);
 

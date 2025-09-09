@@ -8,14 +8,6 @@
 
 **汉化和镜像源由 Xingpeng 修改**
 
-**感谢ghproxy各位的镜像提供**
-
-目前加速源为Cloudflare Workers免费版，免费版可能有速率限制影响，部分地区存在Cloudflare连接问题。
-
-遇到部分文件下载失败不用担心，自动重试方法会重试下载直到过了短时冷却或连接到Cloudflare
-
-待发现到更好的廉价可负担加速源后会跟进更新
-
 |              | Github源                          | Onedrive源                         |
 |--------------|-----------------------------------|------------------------------------|
 | 下载链接     | [下载地址](https://github.com/XingPeng-Pixel/GModPatchTool-Localized-CN/releases/) | [下载地址](https://1drv.ms/f/c/ed0af904380912b9/EjvQ0Lg3T1xFrdLj_mnq0r4Bjc1X9kRaFKAmMRZh3RD4RQ?e=8Gu2SY)   |
