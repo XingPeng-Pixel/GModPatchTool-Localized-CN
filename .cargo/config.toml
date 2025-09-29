@@ -1,2 +1,30 @@
 [env]
 MACOSX_DEPLOYMENT_TARGET = "11.0"
+
+[build]
+# 使用更快的链接器（如果可用）
+rustflags = ["-C", "linker=lld", "-C", "link-arg=-fuse-ld=lld"]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "target-cpu=x86-64-v3", "-C", "link-arg=-fuse-ld=lld"]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-cpu=x86-64-v3"]
+
+[target.x86_64-apple-darwin]
+rustflags = ["-C", "target-cpu=x86-64-v3"]
+
+# 发布构建优化配置
+[profile.release]
+# 链接时优化（LTO）可以显著减小二进制大小
+lto = true
+# 优化级别设置为最大
+opt-level = "z"
+# 代码生成单元设置为1以获得更好的优化
+codegen-units = 1
+# 开启panic时中止而不是展开，减少二进制大小
+panic = "abort"
+# 开启strip调试信息
+strip = true
+# 开启增量编译（在CI中可能禁用，但在开发中有用）
+incremental = false

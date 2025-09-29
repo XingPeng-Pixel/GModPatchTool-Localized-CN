@@ -36,6 +36,10 @@ jobs:
           target: ${{ matrix.target }}
           cache: true
 
+      - name: Install LLD linker (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y lld clang
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
@@ -50,28 +54,46 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-build-
+            ${{ runner.os }}-cargo-build-${{ matrix.target }}-
+
+      - name: Install cargo-chef
+        run: cargo install cargo-chef --locked
+
+      - name: Generate cargo-chef recipe
+        run: cargo chef prepare --recipe-path recipe.json --workspace
+
+      - name: Cook cached dependencies (cargo-chef)
+        run: cargo chef cook --release --target ${{ matrix.target }} --recipe-path recipe.json
 
       - name: Build release binary
+        env:
+          # 启用链接时优化（LTO）
+          CARGO_PROFILE_RELEASE_LTO: "true"
+          # 设置优化级别为最小大小
+          CARGO_PROFILE_RELEASE_OPT_LEVEL: "z"
+          # 禁用增量编译以获得更好的优化
+          CARGO_PROFILE_RELEASE_INCREMENTAL: "false"
+          # 设置代码生成单元为1
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "1"
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Create release artifacts
+      - name: Create release artifacts (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            mkdir -p dist
-            cp target/${{ matrix.target }}/release/gmodpatchtool.exe dist/
-            cd dist
-            Compress-Archive -Path gmodpatchtool.exe -DestinationPath ${{ matrix.artifact_name }}.zip
-          else
-            mkdir -p dist
-            cp target/${{ matrix.target }}/release/gmodpatchtool dist/${{ matrix.artifact_name }}
-            if [ "${{ runner.os }}" = "macOS" ]; then
-              # Create DMG package for macOS if needed
-              echo "macOS artifact created: ${{ matrix.artifact_name }}"
-            fi
-          fi
+          mkdir dist
+          Copy-Item "target/${{ matrix.target }}/release/gmodpatchtool.exe" "dist/"
+          Compress-Archive -Path "dist/gmodpatchtool.exe" -DestinationPath "dist/${{ matrix.artifact_name }}.zip"
+
+      - name: Create release artifacts (macOS/Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/gmodpatchtool dist/${{ matrix.artifact_name }}
+          # macOS DMG打包可在此扩展
 
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v1

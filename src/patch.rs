@@ -797,7 +797,7 @@ where
 	}
 
 	// Find Steam
-	let mut steam_path = None;
+	let mut steam_path: Option<PathBuf> = None;
 	if let Some(steam_path_arg) = args.steam_path {
 		// Make sure the path the user is forcing actually exists
 		let steam_path_arg_pathbuf = pathbuf_to_canonical_pathbuf(steam_path_arg.clone(), true);
