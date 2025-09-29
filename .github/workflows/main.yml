@@ -1,110 +1,102 @@
-name: Rust 跨平台构建
+name: 构建和发布
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main, master, dev ]
   release:
-    types: [released]
+    types: [created]
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   build:
+    name: 在 ${{ matrix.os }} 上构建
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact_name: GModPatchTool-linux
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: GModPatchTool-windows
+            artifact_name: gmodpatchtool.exe
+            asset_name: gmodpatchtool-windows-x64.exe
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: gmodpatchtool
+            asset_name: gmodpatchtool-linux-x64
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact_name: GModPatchTool-macos
+            artifact_name: gmodpatchtool
+            asset_name: gmodpatchtool-macos-x64
 
     steps:
-      - name: 检出仓库
+      - name: 检出代码库
         uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: 安装 Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: 设置Rust工具链
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          cache: true
+          targets: ${{ matrix.target }}
 
-      - name: 使用 Cargo 缓存加快速度
+      - name: 缓存Cargo依赖
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: 缓存 Cargo 构建产物
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-${{ matrix.target }}-
+      - name: 安装系统依赖 (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev
 
-      - name: 安装 cargo-chef
-        run: cargo install cargo-chef --locked
-
-      - name: 生成 cargo-chef 配方
-        run: cargo chef prepare --recipe-path recipe.json --bin gmodpatchtool
-
-      - name: 构建已缓存的依赖（cargo-chef）
-        run: cargo chef cook --release --target ${{ matrix.target }} --recipe-path recipe.json
-
-      - name: 构建发布二进制
-        env:
-          # 启用链接时优化（LTO）
-          CARGO_PROFILE_RELEASE_LTO: "true"
-          # 设置优化级别为最小大小
-          CARGO_PROFILE_RELEASE_OPT_LEVEL: "z"
-          # 禁用增量编译以获得更好的优化
-          CARGO_PROFILE_RELEASE_INCREMENTAL: "false"
-          # 设置代码生成单元为1
-          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "1"
+      - name: 构建项目
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: 上传 workflow Artifact（Windows）
-        if: runner.os == 'Windows'
+      - name: 准备构建产物
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} artifacts/${{ matrix.asset_name }}
+          else
+            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} artifacts/${{ matrix.asset_name }}
+            chmod +x artifacts/${{ matrix.asset_name }}
+          fi
+
+      - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: target/${{ matrix.target }}/release/gmodpatchtool.exe
+          name: ${{ matrix.asset_name }}
+          path: artifacts/${{ matrix.asset_name }}
 
-      - name: 上传 workflow Artifact（macOS/Linux）
-        if: runner.os != 'Windows'
-        uses: actions/upload-artifact@v4
+  release:
+    name: 创建发布
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    
+    steps:
+      - name: 下载所有构建产物
+        uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: target/${{ matrix.target }}/release/gmodpatchtool
+          path: artifacts
 
-      - name: 上传发布文件（Windows）
-        if: runner.os == 'Windows' && github.event_name == 'release'
+      - name: 上传Windows发布资源
         uses: softprops/action-gh-release@v1
         with:
-          files: target/${{ matrix.target }}/release/gmodpatchtool.exe
-          tag_name: ${{ github.ref }}
-          repository: ${{ github.repository }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 上传发布文件（macOS/Linux）
-        if: runner.os != 'Windows' && github.event_name == 'release'
-        uses: softprops/action-gh-release@v1
-        with:
-          files: target/${{ matrix.target }}/release/gmodpatchtool
-          tag_name: ${{ github.ref }}
-          repository: ${{ github.repository }}
+          files: |
+            artifacts/gmodpatchtool-windows-x64.exe/gmodpatchtool-windows-x64.exe
+            artifacts/gmodpatchtool-linux-x64/gmodpatchtool-linux-x64
+            artifacts/gmodpatchtool-macos-x64/gmodpatchtool-macos-x64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
