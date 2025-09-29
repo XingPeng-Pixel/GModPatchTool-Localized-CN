@@ -1,4 +1,4 @@
-name: Rust Cross-Platform Build
+name: Rust 跨平台构建
 
 on:
   workflow_dispatch:
@@ -24,23 +24,19 @@ jobs:
             artifact_name: GModPatchTool-macos
 
     steps:
-      - name: Checkout repository
+      - name: 检出仓库
         uses: actions/checkout@v4
         with:
           lfs: true
 
-      - name: Install Rust
+      - name: 安装 Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           target: ${{ matrix.target }}
           cache: true
 
-      - name: Install LLD linker (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y lld clang
-
-      - name: Cache cargo registry
+      - name: 使用 Cargo 缓存加快速度
         uses: actions/cache@v4
         with:
           path: |
@@ -50,7 +46,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Cache cargo build
+      - name: 缓存 Cargo 构建产物
         uses: actions/cache@v4
         with:
           path: target
@@ -58,16 +54,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-${{ matrix.target }}-
 
-      - name: Install cargo-chef
+      - name: 安装 cargo-chef
         run: cargo install cargo-chef --locked
 
-      - name: Generate cargo-chef recipe
-        run: cargo chef prepare --recipe-path recipe.json --workspace
+      - name: 生成 cargo-chef 配方
+        run: cargo chef prepare --recipe-path recipe.json --bin gmodpatchtool
 
-      - name: Cook cached dependencies (cargo-chef)
+      - name: 构建已缓存的依赖（cargo-chef）
         run: cargo chef cook --release --target ${{ matrix.target }} --recipe-path recipe.json
 
-      - name: Build release binary
+      - name: 构建发布二进制
         env:
           # 启用链接时优化（LTO）
           CARGO_PROFILE_RELEASE_LTO: "true"
@@ -79,7 +75,7 @@ jobs:
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "1"
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Create release artifacts (Windows)
+      - name: 创建发布文件（Windows）
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -87,15 +83,26 @@ jobs:
           Copy-Item "target/${{ matrix.target }}/release/gmodpatchtool.exe" "dist/"
           Compress-Archive -Path "dist/gmodpatchtool.exe" -DestinationPath "dist/${{ matrix.artifact_name }}.zip"
 
-      - name: Create release artifacts (macOS/Linux)
+      - name: 创建发布文件（macOS/Linux）
         if: runner.os != 'Windows'
         shell: bash
         run: |
           mkdir -p dist
           cp target/${{ matrix.target }}/release/gmodpatchtool dist/${{ matrix.artifact_name }}
+          chmod +x dist/${{ matrix.artifact_name }}
+          # 打包为 zip 以便上传为 artifact 和 release asset
+          pushd dist
+          zip -r "${{ matrix.artifact_name }}.zip" "${{ matrix.artifact_name }}"
+          popd
           # macOS DMG打包可在此扩展
 
-      - name: Upload release artifacts
+      - name: 上传 workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/${{ matrix.artifact_name }}.zip
+
+      - name: 上传发布文件
         uses: softprops/action-gh-release@v1
         if: github.event_name == 'release'
         with:
