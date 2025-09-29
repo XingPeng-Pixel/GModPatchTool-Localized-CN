@@ -75,38 +75,35 @@ jobs:
           CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "1"
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: 创建发布文件（Windows）
+      - name: 上传 workflow Artifact（Windows）
         if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          mkdir dist
-          Copy-Item "target/${{ matrix.target }}/release/gmodpatchtool.exe" "dist/"
-          Compress-Archive -Path "dist/gmodpatchtool.exe" -DestinationPath "dist/${{ matrix.artifact_name }}.zip"
-
-      - name: 创建发布文件（macOS/Linux）
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          mkdir -p dist
-          cp target/${{ matrix.target }}/release/gmodpatchtool dist/${{ matrix.artifact_name }}
-          chmod +x dist/${{ matrix.artifact_name }}
-          # 打包为 zip 以便上传为 artifact 和 release asset
-          pushd dist
-          zip -r "${{ matrix.artifact_name }}.zip" "${{ matrix.artifact_name }}"
-          popd
-          # macOS DMG打包可在此扩展
-
-      - name: 上传 workflow Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/${{ matrix.artifact_name }}.zip
+          path: target/${{ matrix.target }}/release/gmodpatchtool.exe
 
-      - name: 上传发布文件
-        uses: softprops/action-gh-release@v1
-        if: github.event_name == 'release'
+      - name: 上传 workflow Artifact（macOS/Linux）
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v4
         with:
-          files: dist/*
+          name: ${{ matrix.artifact_name }}
+          path: target/${{ matrix.target }}/release/gmodpatchtool
+
+      - name: 上传发布文件（Windows）
+        if: runner.os == 'Windows' && github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/${{ matrix.target }}/release/gmodpatchtool.exe
+          tag_name: ${{ github.ref }}
+          repository: ${{ github.repository }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 上传发布文件（macOS/Linux）
+        if: runner.os != 'Windows' && github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/${{ matrix.target }}/release/gmodpatchtool
           tag_name: ${{ github.ref }}
           repository: ${{ github.repository }}
         env:
